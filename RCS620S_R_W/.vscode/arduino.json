@@ -1,0 +1,5 @@
+{
+    "board": "arduino:avr:leonardo",
+    "sketch": "RCS620S_R_W.ino",
+    "port": "COM3"
+}
