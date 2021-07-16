@@ -2,7 +2,7 @@
 - このプログラムはArduinoとRC-S620Sをシリアル通信で使用する想定で作られています。  
 - RCS620S.hについては別途ヘッダ内に書かれている説明を参照してください。  
 
-**※現在開発中でコマンドリスト等が不完全であり、コマンドの長さを取得する関数等がまだ存在しません**  
+**※現在開発中でコマンドリスト等が不完全です**  
 
 # 通信仕様  
 ※Type-AはISO/IEC 14443 通信です。  
@@ -30,22 +30,24 @@
   
 # RCS620SCommand.h
 
-## CreateDataSendCommand関数
+## CreateDataWriteCommand関数
 データを書き込む際のコマンドを生成します。  
 生成されたコマンドはPublic変数のcmdListに格納されます。  
+`RCS620S.h`内の`cardCommand`関数にcmdListを渡す場合はcommandLenパラメータにPublic変数の`cmdListLen`を渡してください。  
 コマンドに関して不明な点は各チップのユーザーズマニュアルにあるコマンドページを参照してください。
 ```cpp
 //書式
-CreateDataSendCommand(RWCommand cmd, const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, RWBlock bloac, const uint8_t *data)
+CreateDataWriteCommand(const uint8_t * IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block, const uint8_t * data, uint16_t dataLen)
 ```
 
 ## CreateDataSendCommand関数
 データを読み込む際のコマンドを生成します。  
 生成されたコマンドはPublic変数のcmdListに格納されます。  
+`RCS620S.h`内の`cardCommand`関数にcmdListを渡す場合はcommandLenパラメータにPublic変数の`cmdListLen`を渡してください。  
 コマンドに関して不明な点は各チップのユーザーズマニュアルにあるコマンドページを参照してください。
 ```cpp
 //書式
-CreateDataReadCommand(RWCommand cmd, const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block)
+CreateDataReadCommand(const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block)
 ```
 
 ## RWCommand
