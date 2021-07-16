@@ -7,7 +7,7 @@ enum RWCommand : uint8_t
     WriteWithoutEncryption  = 0x08  //非暗号化読み込みコマンド
 };
 
-typedef enum RWResponseCode : uint8_t
+enum RWResponseCode : uint8_t
 {
     PollingResponse                 = 0x01, //プーリングレスポンスコード
     ReadWithoutEncryptionResponse   = 0x07, //非暗号化読み書き込みレスポンスコード
@@ -62,7 +62,10 @@ enum RWBlock : uint8_t
 class RCS620SCommand
 {
 public:
-    void CreateDataSendCommand(RWCommand cmd, const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, RWBlock bloac, const uint8_t *data);
+    ~RCS620SCommand();
+
+public:
+    void CreateDataSendCommand(RWCommand cmd, const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block, const uint8_t *data, uint16_t dataLen);
     void CreateDataReadCommand(RWCommand cmd, const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block);
 
 public:
