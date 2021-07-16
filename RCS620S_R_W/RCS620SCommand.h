@@ -59,15 +59,19 @@ enum RWBlock : uint8_t
     CRC_CHECK   = 0xA0  //CRC_CHECKブロック
 };
 
+constexpr unsigned int default_Cmd_Length = 15;
+
 class RCS620SCommand
 {
 public:
+    RCS620SCommand();
     ~RCS620SCommand();
 
 public:
-    void CreateDataSendCommand(RWCommand cmd, const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block, const uint8_t *data, uint16_t dataLen);
-    void CreateDataReadCommand(RWCommand cmd, const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block);
+    void CreateDataWriteCommand(const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block, const uint8_t *data, uint16_t dataLen);
+    void CreateDataReadCommand(const uint8_t *IDm, uint8_t serviceSize, ServiceCode sCode, uint8_t blockSize, RWBlock block);
 
 public:
     uint8_t *cmdList;
+    uint16_t cmdListLen;
 };

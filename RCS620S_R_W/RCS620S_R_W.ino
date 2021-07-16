@@ -52,11 +52,24 @@ void loop() {
   }
 
   ShowData();
-  rc_s620s_cmd.CreateDataReadCommand(RWCommand::ReadWithoutEncryption, rc_s620s.idm, 0x01, ServiceCode::ROAccess, 0x01, RWBlock::S_PAD13);
-  uint8_t data[] = { 0xE3, 0x81, 0x93, 0xE3, 0x82, 0x93, 0xE3, 0x81, 0xAB, 0xE3, 0x81, 0xA1, 0xE3, 0x82, 0x8F, 0x00 };
-  //rc_s620s_cmd.CreateDataSendCommand(RWCommand::WriteWithoutEncryption, rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::S_PAD13, data, 16);
+  uint8_t data[] = { 0x01, 0x02, 0x03 };
+  rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::S_PAD13, data, sizeof(data));
 
-  if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, 31, response, &responseLen) == 1){
+  if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
+    for (int i = 0; i < responseLen; i++) {
+      Serial.print(response[i], HEX);
+      Serial.print(":");
+    }
+    Serial.println("");
+  }
+  else{
+    Serial.println("DataErr0r");
+  }
+
+
+  rc_s620s_cmd.CreateDataReadCommand(rc_s620s.idm, 0x01, ServiceCode::ROAccess, 0x01, RWBlock::S_PAD13);
+  
+  if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
     for (int i = 0; i < responseLen; i++) {
       Serial.print(response[i], HEX);
       Serial.print(":");
