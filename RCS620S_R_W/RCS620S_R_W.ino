@@ -5,6 +5,9 @@
 
 #include <string.h>
 
+//LED
+const int LED = 2;
+
 //Wait time
 const unsigned int IO_wait_time_ms = 250;
 
@@ -39,26 +42,27 @@ void loop() {
 
   if (!rc_s620s.polling(SystemCode::code_wild_card)) {
     rc_s620s.rfOff();
-    digitalWrite(2, LOW);
+    analogWrite(LED, LOW);
     delay(IO_wait_time_ms);
     return; 
   }
 
   if(memcmp(beforeFrameIDm, rc_s620s.idm, 8) == 0){
-    digitalWrite(2, HIGH);
+    digitalWrite(LED, HIGH);
     rc_s620s.rfOff();
     delay(IO_wait_time_ms);
     return; 
   }
 
   ShowData();
-  uint8_t data[] = { 0x01, 0x02, 0x03 };
+  uint8_t data[] = { 0x11, 0x45, 0x14, 0x81, 0x01, 0x91, 0x9F};
   rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::S_PAD13, data, sizeof(data));
 
   if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
     for (int i = 0; i < responseLen; i++) {
       Serial.print(response[i], HEX);
-      Serial.print(":");
+
+      if(i != responseLen - 1) { Serial.print(":"); }
     }
     Serial.println("");
   }
@@ -72,7 +76,8 @@ void loop() {
   if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
     for (int i = 0; i < responseLen; i++) {
       Serial.print(response[i], HEX);
-      Serial.print(":");
+
+      if(i != responseLen - 1) { Serial.print(":"); }
     }
     Serial.println("");
   }
@@ -115,5 +120,5 @@ void ShowData()
 {
   ShowIDm();
   ShowPMm();
-  digitalWrite(2, HIGH);
+  digitalWrite(LED, HIGH);
 }

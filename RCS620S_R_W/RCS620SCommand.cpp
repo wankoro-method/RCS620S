@@ -18,12 +18,12 @@ void RCS620SCommand::CreateDataWriteCommand(const uint8_t * IDm, uint8_t service
     if (cmdList != nullptr) { delete[] cmdList; }
 
     uint8_t cache[] = {
-        (uint8_t)RWCommand::WriteWithoutEncryption,
+        RWCommand::WriteWithoutEncryption,
         IDm[0], IDm[1], IDm[2], IDm[3], IDm[4], IDm[5], IDm[6], IDm[7],
-        (uint8_t)serviceSize,
-        (uint8_t)sCode, 0x00,
-        (uint8_t)blockSize,
-        (uint8_t)0x80, (uint8_t)block,
+        serviceSize,
+        sCode, 0x00,
+        blockSize,
+        0x80, block,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
 
@@ -41,12 +41,12 @@ void RCS620SCommand::CreateDataReadCommand(const uint8_t *IDm, uint8_t serviceSi
     if(cmdList != nullptr){ delete[] cmdList; }
 
     uint8_t cache[] = {
-        (uint8_t)RWCommand::ReadWithoutEncryption,
+        RWCommand::ReadWithoutEncryption,
         IDm[0], IDm[1], IDm[2], IDm[3], IDm[4], IDm[5], IDm[6], IDm[7],
-        (uint8_t)serviceSize,
-        (uint8_t)sCode, 0x00,
-        (uint8_t)blockSize,
-        (uint8_t)0x80, (uint8_t)block
+        serviceSize,
+        sCode, 0x00,
+        blockSize,
+        0x80, block
     };
 
     cmdListLen = default_Cmd_Length;
