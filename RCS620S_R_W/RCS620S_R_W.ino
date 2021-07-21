@@ -2,6 +2,11 @@
 
 #include "RCS620S.h"
 #include "RCS620SCommand.h"
+#include "HardwareSerial.h"
+
+#include <SPI.h>
+#include <SD.h>
+#include <TFT.h>  // Arduino LCD library
 
 #include <string.h>
 
@@ -13,9 +18,6 @@ RCS620SCommand rc_s620s_cmd;                    //RC-S620S Command class
 
 uint8_t response[RCS620S_MAX_RW_RESPONSE_LEN];  //レスポンスデータキャッチ用
 uint8_t responseLen;
-
-bool executeFlag = false;                       //前フレームIDmデータ比較用
-uint8_t beforeFrameIDm[8] = { 0 };
 
 void ShowIDm();
 void ShowPMm();
@@ -29,77 +31,35 @@ void setup() {
   rc_s620s.initDevice();
 }
 
-String data;
-
 void loop() {
-  for(int i = 0; i < 8; i++){
-    beforeFrameIDm[i] = rc_s620s.idm[i];
-  }
-
   if(!Serial.available()) { digitalWrite(LED, LOW); return; }
 
+  //アクセスランプ点灯
   digitalWrite(LED, HIGH);
 
-  data = "";
+  uint8_t data[9];
+  int counter = 0;
   while(Serial.available()){
-    char cache = Serial.read();
-    data += cache;
+    data[counter] = Serial.read();
+    counter++;
   }
 
-  if(data == "Pooling"){
-    if (rc_s620s.polling(SystemCode::code_wild_card)) {
-      ShowData();
-      rc_s620s.rfOff();
-    }
-    else{
-      Serial.println("NFC card is nothing!!!");
-      rc_s620s.rfOff();
-    }
+  for(int i = 0; i < 8; i++){
+    Serial.write(data, HEX);
   }
-
-  if(data == "Read"){
-    if (!rc_s620s.polling(SystemCode::code_wild_card)) {
-      Serial.println("NFC card is nothing!!!");
-    }
-
-    rc_s620s_cmd.CreateDataReadCommand(rc_s620s.idm, 0x01, ServiceCode::ROAccess, 0x01, RWBlock::S_PAD13);
-
-    if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
-      for (int i = 0; i < responseLen; i++) {
-        Serial.print(response[i], HEX);
-
-        if(i != responseLen - 1) { Serial.print(":"); }
-      }
-      Serial.println("");
-    }
-    else{
-      Serial.println("Read error");
-    }
-  }
-
-  if(data == "Write"){
-    if (!rc_s620s.polling(SystemCode::code_wild_card)) {
-      Serial.println("NFC card is nothing!!!");
-    }
-    
-    uint8_t data[] = { 0x11, 0x45, 0x14, 0x81, 0x01, 0x91, 0x9F};
-    rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::S_PAD13, data, sizeof(data));
-
-    if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
-      for (int i = 0; i < responseLen; i++) {
-        Serial.print(response[i], HEX);
-
-        if(i != responseLen - 1) { Serial.print(":"); }
-      }
-      Serial.println("");
-    }
-    else{
-      Serial.println("Write error");
-    }
-  }
+//  rc_s620s.polling();
+//
+//  for(int i = 0; i < sizeof(rc_s620s.idm); i++){
+//    Serial.print(rc_s620s.idm[i], HEX);
+//  }
+//  Serial.println("");
+//
+  //アクセスランプ消灯
+  digitalWrite(LED, LOW);
 
   //切断処理
-  rc_s620s.rfOff();
+//  rc_s620s.rfOff();
+//  delay(100);
 }
 
 void ShowIDm()
