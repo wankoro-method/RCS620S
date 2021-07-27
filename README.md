@@ -5,8 +5,7 @@
 **※現在開発中でコマンドリスト等が不完全です**  
 
 # 通信仕様  
-※Type-AはISO/IEC 14443 通信です。  
-※Type-BはISO/IEC 14443 通信です。  
+※Type-A及びType-BはISO/IEC 14443 通信です。  
 ※Type-FはFelica通信です。  
 
 | 方式 | 仕様 |
