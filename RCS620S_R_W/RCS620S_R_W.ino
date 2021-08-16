@@ -2,26 +2,30 @@
 
 #include "RCS620S.h"
 #include "RCS620SCommand.h"
-#include "HardwareSerial.h"
 
-#include <SPI.h>
-#include <SD.h>
-#include <TFT.h>  // Arduino LCD library
+#include "DES.h"
 
 #include <string.h>
 
-const int LED = 2;                              //LED
-const unsigned int IO_wait_time_ms = 250;       //Wait time
+//Wait time
+const unsigned int IO_wait_time_ms = 250;
 
-RCS620S rc_s620s;                               //RC-S620S Device class
-RCS620SCommand rc_s620s_cmd;                    //RC-S620S Command class
-
-uint8_t response[RCS620S_MAX_RW_RESPONSE_LEN];  //レスポンスデータキャッチ用
-uint8_t responseLen;
+//RC-S620S Device class
+RCS620S rc_s620s;
+RCS620SCommand rc_s620s_cmd;
 
 void ShowIDm();
 void ShowPMm();
 void ShowData();
+void GetMACData();
+
+//レスポンスデータキャッチ用
+uint8_t response[RCS620S_MAX_RW_RESPONSE_LEN];
+uint8_t responseLen;
+
+//前フレームIDmデータ比較用
+bool executeFlag = false;
+uint8_t beforeFrameIDm[8] = { 0 };
 
 //Initialize
 void setup() {
@@ -32,34 +36,60 @@ void setup() {
 }
 
 void loop() {
-  if(!Serial.available()) { digitalWrite(LED, LOW); return; }
-
-  //アクセスランプ点灯
-  digitalWrite(LED, HIGH);
-
-  uint8_t data[9];
-  int counter = 0;
-  while(Serial.available()){
-    data[counter] = Serial.read();
-    counter++;
-  }
-
   for(int i = 0; i < 8; i++){
-    Serial.write(data, HEX);
+    beforeFrameIDm[i] = rc_s620s.idm[i];
   }
-//  rc_s620s.polling();
-//
-//  for(int i = 0; i < sizeof(rc_s620s.idm); i++){
-//    Serial.print(rc_s620s.idm[i], HEX);
-//  }
-//  Serial.println("");
-//
-  //アクセスランプ消灯
-  digitalWrite(LED, LOW);
+
+  if (!rc_s620s.polling(SystemCode::code_wild_card)) {
+    rc_s620s.rfOff();
+    digitalWrite(2, LOW);
+    delay(IO_wait_time_ms);
+    return; 
+  }
+
+  if(memcmp(beforeFrameIDm, rc_s620s.idm, 8) == 0){
+    digitalWrite(2, HIGH);
+    rc_s620s.rfOff();
+    delay(IO_wait_time_ms);
+    return; 
+  }
+
+  ShowData();
+  GetMACData();
+
+  /*
+  uint8_t data[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16};
+  rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::CK, data, sizeof(data));
+
+  if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
+    for (int i = 0; i < responseLen; i++) {
+      Serial.print(response[i], HEX);
+      Serial.print(":");
+    }
+    Serial.println("");
+  }
+  else{
+    Serial.println("DataErr0r");
+  }
+
+  
+  rc_s620s_cmd.CreateDataReadCommand(rc_s620s.idm, 0x01, ServiceCode::ROAccess, 0x01, RWBlock::S_PAD13);
+  
+  if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
+    for (int i = 0; i < responseLen; i++) {
+      Serial.print(response[i], HEX);
+      Serial.print(":");
+    }
+    Serial.println("");
+  }
+  else{
+    Serial.println("DataErr0r");
+  }
+  */
 
   //切断処理
-//  rc_s620s.rfOff();
-//  delay(100);
+  rc_s620s.rfOff();
+  delay(IO_wait_time_ms);
 }
 
 void ShowIDm()
@@ -92,5 +122,63 @@ void ShowData()
 {
   ShowIDm();
   ShowPMm();
-  digitalWrite(LED, HIGH);
+  digitalWrite(2, HIGH);
+}
+
+void GetMACData()
+{
+  //1st step authentication
+  {
+    //ランダムチャレンジ用乱数生成
+    uint8_t RChallengeData[16];
+    Serial.print("Start");
+    for(int i = 0; i < 16; i++){
+      RChallengeData[i] = random(0, 256);
+      Serial.print(RChallengeData[i], HEX);
+      Serial.print(":");
+    }
+    Serial.println("End");
+    //ランダムチャレンジブロック書き込み
+    rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::RC, RChallengeData, sizeof(RChallengeData));
+
+    //レスポンス確認
+    if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
+      for (int i = 0; i < responseLen; i++) {
+        Serial.print(response[i], HEX);
+        Serial.print(":");
+      }
+      Serial.println("");
+      Serial.println("RC Success");
+    }
+    else{
+      Serial.println("DataError");
+    }
+  }
+
+  //2nd step authentication
+  {
+    //Read ID, CKV, MAC_A
+    uint8_t RWEcmd[] = {
+        RWCommand::ReadWithoutEncryption,
+        rc_s620s.idm[0], rc_s620s.idm[1], rc_s620s.idm[2], rc_s620s.idm[3], rc_s620s.idm[4], rc_s620s.idm[5], rc_s620s.idm[6], rc_s620s.idm[7],
+        0x01,
+        ServiceCode::ROAccess, 0x00,
+        0x03,
+        0x80, RWBlock::ID,
+        0x80, RWBlock::CKV,
+        0x80, RWBlock::MAC_A,
+    };
+
+    if(rc_s620s.cardCommand(RWEcmd, sizeof(RWEcmd), response, &responseLen) == 1){
+      for (int i = 0; i < responseLen; i++) {
+        Serial.print(response[i], HEX);
+        Serial.print(":");
+      }
+      Serial.println("");
+      Serial.println("MAC Success");
+    }
+    else{
+      Serial.println("DataErr0r");
+    }
+  }
 }
