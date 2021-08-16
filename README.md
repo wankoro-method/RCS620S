@@ -1,12 +1,15 @@
-# Arduino用RC-S620Sリードライタープログラム
+![Bord](https://img.shields.io/badge/Bord-Arduino-%230fbaa9?style=flat-square)
+![Bord](https://img.shields.io/badge/Type-Leonard%20%2F%20ProMicro%20%2F%20Mega-%230fbaa9?style=flat-square)
+![Standard](https://img.shields.io/badge/Standard-NFC%20Type--A%2FB%2FF-blue?style=flat-square)
+
+# ArduinoLeonard/ProMicro用RC-S620Sリードライタープログラム
 - このプログラムはArduinoとRC-S620Sをシリアル通信で使用する想定で作られています。  
 - RCS620S.hについては別途ヘッダ内に書かれている説明を参照してください。  
 
 **※現在開発中でコマンドリスト等が不完全です**  
 
 # 通信仕様  
-※Type-AはISO/IEC 14443 通信です。  
-※Type-BはISO/IEC 14443 通信です。  
+※Type-A及びType-BはISO/IEC 14443 通信です。  
 ※Type-FはFelica通信です。  
 
 | 方式 | 仕様 |
@@ -21,14 +24,18 @@
 | 通信方式 | 下記詳細 |
 | Type-A<br>Type-B<br>Type-F | 半二重通信 <br> 半二重通信 <br> 半二重通信、CRC-ITU-T |
 
-# ハードウェア要件
+# ハードウェア要件(※現在開発時)
 
 | ハードウェア | 要件 |
 |:---:|:---|
 | 制御マイコン | ・Arduino ProMicro(16MHz) <br> ・ATMega32u4(16MHz) |
-| リードライター | SONY RC-S620S(3.3V / 5V)
+| リードライター | SONY RC-S620S(3.3V 5V) |  
   
-# RCS620SCommand.h
+※ProMicroまたはATMega32u4チップは3.3Vでも動作しますが、このライブラリのデバッグでは `5V 16MHz` でデバッグしているため不安定になる可能性があります。  
+※ProMicroボードは開発時にデバッグで使用しているマイコンボードですので、理論的にLeonard / Megaに対応しています。
+※リードライターは必ずRC-S620Sを使用してください。その他の機器の場合、出力の違いにより電波法に触れる可能性やコマンドが対応しないことがございます。
+  
+# RCS620SCommand.h (コマンド送受信ヘルパー関数)
 
 ## CreateDataWriteCommand関数
 データを書き込む際のコマンドを生成します。  
