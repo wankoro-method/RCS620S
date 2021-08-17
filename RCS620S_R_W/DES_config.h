@@ -1,7 +1,7 @@
 #ifndef __DES_CONFIG_H__
 #define __DES_CONFIG_H__
 
-#define DES_PRINT
+//#define DES_PRINT
 //#define DES_DEBUG
 
 #if  (defined(__linux) || defined(linux)) && !defined(__ARDUINO_X86__)

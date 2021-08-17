@@ -3,10 +3,9 @@
 #include "RCS620S.h"
 #include "RCS620SCommand.h"
 
-#include "DES.h"
-#include "openssl-3.0.0-beta2/include/openssl/des.h"
-
 #include <string.h>
+
+#include "DES.h"
 
 //Wait time
 const unsigned int IO_wait_time_ms = 250;
@@ -214,7 +213,7 @@ void GetMAC_A()
 }
 
 //バイトオーダー反転
-void dataSwap(uint8_t data[])
+void swapByteOrder(uint8_t data[])
 {
   uint8_t swap[8];
   for (int i = 0; i < 8; i++) {
@@ -226,80 +225,24 @@ void dataSwap(uint8_t data[])
   }
 }
 
-int calc_size(int size){
-	size = size + (8 - (size % 8)) - 1;
-	return size;
-}
-
 void MAC_AValueCalc()
 {
-  uint8_t SK1[8];
-  uint8_t SK2[8];
+  uint8_t RC1[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  uint8_t RC2[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-  uint8_t IV1[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-  uint8_t IV2[8];
+  uint8_t CK1[] = { 1, 1, 1, 1, 1, 1, 1, 1 };
+  uint8_t CK2[] = { 1, 1, 1, 1, 1, 1, 1, 1 };
 
-  uint8_t RC1[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-  uint8_t RC2[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  uint8_t SK1[8], SK2[8];
 
-  //uint8_t defaultData[] = { 0x82, 0x00, 0x86, 0x00, 0x91, 0x00, 0xFF, 0xFF };
+  //CK(key)とIVの初期化
+  des.init(CK1, (unsigned long long int)0);
 
-  uint8_t desKey[] = {
-    1, 1, 1, 1, 1, 1, 1, 1, //key1
-    1, 1, 1, 1, 1, 1, 1, 1, //key2
-    1, 1, 1, 1, 1, 1, 1, 1  //key3(1)
-  };
+  //暗号化
+  des.tdesCbcEncipher(RC1,SK1);
 
-  //SK1
-  {
-    /*dataSwap(RC1);
-
-    unsigned long long int ivZero = 0;
-    for(int i = 0; i < sizeof(IV1); i++){
-      ivZero += IV1[i];
-    }
-
-    des.init(desKey, ivZero);
-    des.do_3des_encrypt(RC1, sizeof(RC1), SK1, desKey);
-    for(int i = 0; i < 8; i++){
-      IV2[i] = SK1[i];
-    }
-
-    dataSwap(SK1);
-    Serial.print("Arduino SK1 : ");
-    for(int i = 0; i < sizeof(SK1); i++){
-      Serial.print(SK1[i], HEX);
-      Serial.print(":");
-    }*/
-
-    byte plaintext[] = "12345678";
-    byte ciphertext[calc_size(sizeof(plaintext))];
-    byte plaintext_p[sizeof(ciphertext)];
-    des.do_3des_encrypt(plaintext,sizeof(plaintext),ciphertext,"11111111\0");
-
-    for(int i = 0; i < sizeof(ciphertext); i++){
-      Serial.print(plaintext[i], HEX);
-      Serial.print(":");
-    }
+  Serial.print("Arduino SK1 = ");
+  for(int i = 0; i < sizeof(SK1); i++){
+    Serial.print(SK1[i], HEX);
   }
-
-  //SK2
-  /*{
-    dataSwap(RC2);
-
-    unsigned long long int iv = 0;
-    for(int i = 0; i < sizeof(SK1); i++){
-      iv += IV2[i];
-    }
-
-    des.init(desKey, iv);
-    des.do_3des_encrypt(RC2, sizeof(RC2), SK2, desKey);
-
-    dataSwap(SK2);
-    Serial.print("Arduino SK2 : ");
-    for(int i = 0; i < sizeof(SK2); i++){
-      Serial.print(SK2[i], HEX);
-      Serial.print(":");
-    }
-  }*/
 }
