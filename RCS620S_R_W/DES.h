@@ -68,7 +68,7 @@ class DES
 		void decrypt(void* out, const void* in, const uint8_t* key);
 		
 		/** \fn void tripleEncrypt(void* out, const void* in, const void* key)
-		* \brief encrypt a block with Tripple-DES
+		*   \brief encrypt a block with Tripple-DES
 		* 
 		* This function encrypts a block of 64 bits (8 bytes) with the Tripple-DES (EDE)
 		* algorithm. Key expansion is done automatically. The key is 192 bits long, but
@@ -82,7 +82,7 @@ class DES
 		void tripleEncrypt(void* out, void* in, const void* key);
 
 		/** \fn void tripleDecrypt(void* out, const void* in, const void* key)
-		* \brief decrypt a block with Tripple-DES
+		*   \brief decrypt a block with Tripple-DES
 		* 
 		* This function decrypts a block of 64 bits (8 bytes) with the Tripple-DES (EDE)
 		* algorithm. Key expansion is done automatically. The key is 192 bits long, but
@@ -222,7 +222,7 @@ class DES
 		bool CheckPad(byte* in,int size);
 		
 		/** \fn tdesCbcEncipher(byte* in,byte* out)
-		* \brief the main encrypt 3DES with IV function
+		*   \brief the main encrypt 3DES with IV function
 		* 
 		* This function uses the IV to xor (^) the first block of the string
 		* and encrypts it using tripleEncrypt function 

@@ -4,6 +4,7 @@
 #include "RCS620SCommand.h"
 
 #include "DES.h"
+#include "openssl-3.0.0-beta2/include/openssl/des.h"
 
 #include <string.h>
 
@@ -14,17 +15,23 @@ const unsigned int IO_wait_time_ms = 250;
 RCS620S rc_s620s;
 RCS620SCommand rc_s620s_cmd;
 
+//DES class
+DES des;
+
+//Function
 bool Pooling();
 void ShowIDm();
 void ShowPMm();
 void ShowData();
 void GetMAC_A();
+void MAC_AValueCalc();
 
 //レスポンスデータキャッチ用
 uint8_t response[RCS620S_MAX_RW_RESPONSE_LEN];
 uint8_t responseLen;
 
 //MAC_Aデータレスポンスキャッチ用
+uint8_t RCValue[16];
 uint8_t ResMAC_A[8];
 
 //前フレームIDmデータ比較用
@@ -44,9 +51,10 @@ void loop() {
   if(Pooling() != true) { return; }
   ShowData();
   GetMAC_A();
+  MAC_AValueCalc();
 
   /*
-  uint8_t data[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16};
+  uint8_t data[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
   rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::CK, data, sizeof(data));
 
   if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
@@ -144,17 +152,16 @@ void GetMAC_A()
     //ランダムチャレンジ用乱数生成
     randomSeed(analogRead(A1));
 
-
-    uint8_t RChallengeData[16];
     Serial.print("RCData : ");
     for(int i = 0; i < 16; i++){
-      RChallengeData[i] = random(0, 256);
-      Serial.print(RChallengeData[i], HEX);
+      //RCValue[i] = random(0, 256);
+      RCValue[i] = 0x00;
+      Serial.print(RCValue[i], HEX);
       Serial.print(":");
     }
     Serial.println("");
     //ランダムチャレンジブロック書き込み
-    rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::RC, RChallengeData, sizeof(RChallengeData));
+    rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::RC, RCValue, sizeof(RCValue));
 
     //レスポンス確認
     if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
@@ -172,7 +179,7 @@ void GetMAC_A()
 
   //2nd step authentication
   {
-    //Read ID, CKV, MAC_A    //*/*/*/*/*/*/*/*/*45 - 53
+    //Read ID, CKV, MAC_A
     uint8_t RWEcmd[] = {
         RWCommand::ReadWithoutEncryption,
         rc_s620s.idm[0], rc_s620s.idm[1], rc_s620s.idm[2], rc_s620s.idm[3], rc_s620s.idm[4], rc_s620s.idm[5], rc_s620s.idm[6], rc_s620s.idm[7],
@@ -204,4 +211,95 @@ void GetMAC_A()
     }
     Serial.println("");
   }
+}
+
+//バイトオーダー反転
+void dataSwap(uint8_t data[])
+{
+  uint8_t swap[8];
+  for (int i = 0; i < 8; i++) {
+    swap[7 - i] = data[i];
+  }
+
+  for (int i = 0; i < 8; i++) {
+    data[i] = swap[i];
+  }
+}
+
+int calc_size(int size){
+	size = size + (8 - (size % 8)) - 1;
+	return size;
+}
+
+void MAC_AValueCalc()
+{
+  uint8_t SK1[8];
+  uint8_t SK2[8];
+
+  uint8_t IV1[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  uint8_t IV2[8];
+
+  uint8_t RC1[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  uint8_t RC2[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  //uint8_t defaultData[] = { 0x82, 0x00, 0x86, 0x00, 0x91, 0x00, 0xFF, 0xFF };
+
+  uint8_t desKey[] = {
+    1, 1, 1, 1, 1, 1, 1, 1, //key1
+    1, 1, 1, 1, 1, 1, 1, 1, //key2
+    1, 1, 1, 1, 1, 1, 1, 1  //key3(1)
+  };
+
+  //SK1
+  {
+    /*dataSwap(RC1);
+
+    unsigned long long int ivZero = 0;
+    for(int i = 0; i < sizeof(IV1); i++){
+      ivZero += IV1[i];
+    }
+
+    des.init(desKey, ivZero);
+    des.do_3des_encrypt(RC1, sizeof(RC1), SK1, desKey);
+    for(int i = 0; i < 8; i++){
+      IV2[i] = SK1[i];
+    }
+
+    dataSwap(SK1);
+    Serial.print("Arduino SK1 : ");
+    for(int i = 0; i < sizeof(SK1); i++){
+      Serial.print(SK1[i], HEX);
+      Serial.print(":");
+    }*/
+
+    byte plaintext[] = "12345678";
+    byte ciphertext[calc_size(sizeof(plaintext))];
+    byte plaintext_p[sizeof(ciphertext)];
+    des.do_3des_encrypt(plaintext,sizeof(plaintext),ciphertext,"11111111\0");
+
+    for(int i = 0; i < sizeof(ciphertext); i++){
+      Serial.print(plaintext[i], HEX);
+      Serial.print(":");
+    }
+  }
+
+  //SK2
+  /*{
+    dataSwap(RC2);
+
+    unsigned long long int iv = 0;
+    for(int i = 0; i < sizeof(SK1); i++){
+      iv += IV2[i];
+    }
+
+    des.init(desKey, iv);
+    des.do_3des_encrypt(RC2, sizeof(RC2), SK2, desKey);
+
+    dataSwap(SK2);
+    Serial.print("Arduino SK2 : ");
+    for(int i = 0; i < sizeof(SK2); i++){
+      Serial.print(SK2[i], HEX);
+      Serial.print(":");
+    }
+  }*/
 }
