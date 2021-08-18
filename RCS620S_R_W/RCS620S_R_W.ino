@@ -150,12 +150,12 @@ void GetMAC_A()
   //1st step authentication
   {
     //ランダムチャレンジ用乱数生成
-    randomSeed(analogRead(A1));
+    //randomSeed(analogRead(A1));
 
     Serial.print("RCData : ");
     for(int i = 0; i < 16; i++){
-      RCValue[i] = random(0, 256);
-      //RCValue[i] = 0;
+      //RCValue[i] = random(0, 256);
+      RCValue[i] = 0;
       Serial.print(RCValue[i], HEX);
       Serial.print(":");
     }
@@ -187,8 +187,8 @@ void GetMAC_A()
         ServiceCode::ROAccess, 0x00,
         0x03,
         0x80, RWBlock::ID,
-        0x80, RWBlock::CKV,
-        0x80, RWBlock::MAC_A,
+        /*0x80, RWBlock::CKV,*/
+        0x80, RWBlock::MAC_A
     };
 
     if(rc_s620s.cardCommand(RWEcmd, sizeof(RWEcmd), response, &responseLen) == 1){
@@ -228,7 +228,7 @@ void swapByteOrder(uint8_t data[])
 
 void TwoKey_T_DES(const uint8_t *plainData, uint8_t *encData, const uint8_t *key1, const uint8_t *key2)
 {
-  uint8_t encDataCache_1[8], encDataCache_2[8];
+  uint8_t encDataCache_1[8] = { 0 }, encDataCache_2[8] = { 0 };
   des.encrypt( encDataCache_1,       plainData,  key1);
   des.decrypt( encDataCache_2,  encDataCache_1,  key2);
   des.encrypt(        encData,  encDataCache_2,  key1);
@@ -237,9 +237,6 @@ void TwoKey_T_DES(const uint8_t *plainData, uint8_t *encData, const uint8_t *key
 void MAC_AValueCalc()
 {
   //ランダムチャレンジ
-  //uint8_t RC1[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-  //uint8_t RC2[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-
   uint8_t RC1[8], RC2[8];
   for(int i = 0; i < 8; i++){
     RC1[i] = RCValue[i];
@@ -268,12 +265,11 @@ void MAC_AValueCalc()
   /*******************************
        Generate session key 2     
   ********************************/
- swapByteOrder(RC2);
+  swapByteOrder(RC2);
   for(int i = 0; i < 8; i++){
     RC2[i] ^= SK1[i];
   }
   
-  //TwoKey_T_DES(RC2, SK2, CK1, CK2);
   TwoKey_T_DES(RC2, SK2, CK1, CK2);
   Serial.print("SK2 = ");
   for(int i = 7; i >= 0; i--){
@@ -285,12 +281,20 @@ void MAC_AValueCalc()
   /*******************************
            Generate MAC_A
   ********************************/
+
+  //レスポンスデータ分割
+  uint8_t ID1[8], ID2[8], CKV1[8], CKV2[8];
+  for(int i = 0; i < 8; i++){
+    ID1[i]  = response[i + 12];
+    ID2[i]  = response[i + 20];
+    CKV1[i] = response[i + 28];
+    CKV2[i] = response[i + 36];
+  }
   
-  uint8_t encData1[8], encData2[8];
-  uint8_t ID1[]  = { response[12], response[13], response[14], response[15], response[16], response[17], response[18], response[19] }, ID2[]  = { response[20], response[21], response[22], response[23], response[24], response[25], response[26], response[27] };
-  uint8_t CKV1[] = { response[28], response[29], response[30], response[31], response[32], response[33], response[34], response[35] }, CKV2[] = { response[36], response[37], response[38], response[39], response[40], response[41], response[42], response[43] };
+  //初期値
   uint8_t firstData[] = { RWBlock::ID, 0x00, RWBlock::CKV, 0x00, 0xFF, 0xFF, 0xFF, 0xFF };
 
+  //エンコードデータ格納用変数
   uint8_t enc1[8], enc2[8], enc3[8], enc4[8], maca[8];
   
   //１段目
@@ -305,7 +309,7 @@ void MAC_AValueCalc()
   for(int i = 0; i < 8; i++){
     enc1[i] ^= ID1[i];
   }
-  TwoKey_T_DES(encData1, enc2, SK1, SK2);
+  TwoKey_T_DES(enc1, enc2, SK1, SK2);
   
   //３段目
   swapByteOrder(ID2);
