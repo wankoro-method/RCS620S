@@ -175,7 +175,7 @@ const uint8_t shiftkeyinv_permtab[] PROGMEM = {
 /******************************************************************************/
 DES::DES(){
 	sprintf((char *)key,"000000000000000000000000\0");
-	byte ar_iv[8] = { 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
+	byte ar_iv[8] = { 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01 };
 	memcpy(iv,ar_iv,8);
 	memcpy(&IVC,ar_iv,8);
  	arr_pad[0] = 0x01;

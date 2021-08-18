@@ -49,11 +49,9 @@ void loop() {
 
   if(Pooling() != true) { return; }
   ShowData();
-  GetMAC_A();
-  MAC_AValueCalc();
 
-  /*
-  uint8_t data[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+  
+  uint8_t data[] = { 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2 };
   rc_s620s_cmd.CreateDataWriteCommand(rc_s620s.idm, 1, ServiceCode::RWAccess, 1, RWBlock::CK, data, sizeof(data));
 
   if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
@@ -67,7 +65,7 @@ void loop() {
     Serial.println("DataErr0r");
   }
 
-  
+  /*
   rc_s620s_cmd.CreateDataReadCommand(rc_s620s.idm, 0x01, ServiceCode::ROAccess, 0x01, RWBlock::S_PAD13);
   
   if(rc_s620s.cardCommand(rc_s620s_cmd.cmdList, rc_s620s_cmd.cmdListLen, response, &responseLen) == 1){
@@ -81,6 +79,9 @@ void loop() {
     Serial.println("DataErr0r");
   }
   */
+
+  GetMAC_A();
+  MAC_AValueCalc();
 
   //切断処理
   Serial.println("");
@@ -149,11 +150,12 @@ void GetMAC_A()
   //1st step authentication
   {
     //ランダムチャレンジ用乱数生成
-    //randomSeed(analogRead(A1));
+    randomSeed(analogRead(A1));
 
     Serial.print("RCData : ");
     for(int i = 0; i < 16; i++){
       RCValue[i] = random(0, 256);
+      //RCValue[i] = 0;
       Serial.print(RCValue[i], HEX);
       Serial.print(":");
     }
@@ -224,70 +226,112 @@ void swapByteOrder(uint8_t data[])
   }
 }
 
+void TwoKey_T_DES(const uint8_t *plainData, uint8_t *encData, const uint8_t *key1, const uint8_t *key2)
+{
+  uint8_t encDataCache_1[8], encDataCache_2[8];
+  des.encrypt( encDataCache_1,       plainData,  key1);
+  des.decrypt( encDataCache_2,  encDataCache_1,  key2);
+  des.encrypt(        encData,  encDataCache_2,  key1);
+}
+
 void MAC_AValueCalc()
 {
+  //ランダムチャレンジ
+  //uint8_t RC1[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  //uint8_t RC2[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
   uint8_t RC1[8], RC2[8];
   for(int i = 0; i < 8; i++){
     RC1[i] = RCValue[i];
     RC2[i] = RCValue[i + 8];
   }
 
-  for(int i = 0; i < 8; i++){
-    Serial.print(RC1[i], HEX);
-    Serial.print(":");
-  }
-  for(int i = 0; i < 8; i++){
-    Serial.print(RC2[i], HEX);
-    Serial.print(":");
-  }
-  Serial.println("");
+  //カードキー
+  uint8_t CK1[8] = { 1, 1, 1, 1, 1, 1, 1, 1 };
+  uint8_t CK2[8] = { 2, 2, 2, 2, 2, 2, 2, 2 };
 
-  uint8_t CK[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+  //セッションキー
+  uint8_t SK1[8], SK2[8];
 
-  ///////////SK1///////////
-  //CK(key)とIVの初期化
-  des.init(CK, (unsigned long long int)0);
-
-  //暗号化
-  des.calc_size_n_pad(sizeof(RC1));
-  uint8_t SK1[des.get_size()];
-  des.tdesCbcEncipher(RC1,SK1);
-
-  Serial.print("Arduino SK1 = ");
+  /*******************************
+       Generate session key 1     
+  ********************************/
+  swapByteOrder(RC1);
+  TwoKey_T_DES(RC1, SK1, CK1, CK2);
+  Serial.print("SK1 = ");
   for(int i = 7; i >= 0; i--){
     Serial.print(SK1[i], HEX);
     Serial.print(":");
   }
   Serial.println("");
-
-  ///////////SK2///////////
-  //CK(key)とIVの初期化
-  //des.init(CK, (unsigned long long int)0);
-
-  //暗号化
-  uint8_t cRC2[8];
+  
+  /*******************************
+       Generate session key 2     
+  ********************************/
+ swapByteOrder(RC2);
   for(int i = 0; i < 8; i++){
-    cRC2[i] = RC2[i] ^ SK1[i];
+    RC2[i] ^= SK1[i];
   }
-
-  des.calc_size_n_pad(sizeof(RC2));
-  uint8_t SK2[des.get_size()];
-  des.tdesCbcEncipher(cRC2,SK1);
-
-  Serial.print("Arduino SK2 = ");
+  
+  //TwoKey_T_DES(RC2, SK2, CK1, CK2);
+  TwoKey_T_DES(RC2, SK2, CK1, CK2);
+  Serial.print("SK2 = ");
   for(int i = 7; i >= 0; i--){
     Serial.print(SK2[i], HEX);
     Serial.print(":");
   }
   Serial.println("");
   
-/*
-  //MAC_A
-  {
-    uint8_t D0[] = { 0x82, 0x00, 0x86, 0x00, 0x41, 0x00, 0xFF, 0xFF };
-    swapByteOrder(D0);
+  /*******************************
+           Generate MAC_A
+  ********************************/
+  
+  uint8_t encData1[8], encData2[8];
+  uint8_t ID1[]  = { response[12], response[13], response[14], response[15], response[16], response[17], response[18], response[19] }, ID2[]  = { response[20], response[21], response[22], response[23], response[24], response[25], response[26], response[27] };
+  uint8_t CKV1[] = { response[28], response[29], response[30], response[31], response[32], response[33], response[34], response[35] }, CKV2[] = { response[36], response[37], response[38], response[39], response[40], response[41], response[42], response[43] };
+  uint8_t firstData[] = { RWBlock::ID, 0x00, RWBlock::CKV, 0x00, 0xFF, 0xFF, 0xFF, 0xFF };
 
-    des.init(CK, (unsigned long long int)0);
-
-  }*/
+  uint8_t enc1[8], enc2[8], enc3[8], enc4[8], maca[8];
+  
+  //１段目
+  swapByteOrder(firstData);
+  for(int i = 0; i < 8; i++){
+    firstData[i] ^= RC1[i];
+  }
+  TwoKey_T_DES(firstData, enc1, SK1, SK2);
+  
+  //２段目
+  swapByteOrder(ID1);
+  for(int i = 0; i < 8; i++){
+    enc1[i] ^= ID1[i];
+  }
+  TwoKey_T_DES(encData1, enc2, SK1, SK2);
+  
+  //３段目
+  swapByteOrder(ID2);
+  for(int i = 0; i < 8; i++){
+    enc2[i] ^= ID2[i];
+  }
+  TwoKey_T_DES(enc2, enc3, SK1, SK2);
+  
+  //４段目
+  swapByteOrder(CKV1);
+  for(int i = 0; i < 8; i++){
+    enc3[i] ^= CKV1[i];
+  }
+  TwoKey_T_DES(enc3, enc4, SK1, SK2);
+  
+  //MAC_A生成
+  swapByteOrder(CKV2);
+  for(int i = 0; i < 8; i++){
+    enc4[i] ^= CKV2[i];
+  }
+  TwoKey_T_DES(enc4, maca, SK1, SK2);
+  
+  Serial.print("Arduino MAC_A : ");
+  for(int i = 7; i >= 0; i--){
+    Serial.print(maca[i], HEX);
+    Serial.print(":");
+  }
+  Serial.println("");
 }
