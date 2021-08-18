@@ -175,7 +175,7 @@ const uint8_t shiftkeyinv_permtab[] PROGMEM = {
 /******************************************************************************/
 DES::DES(){
 	sprintf((char *)key,"000000000000000000000000\0");
-	byte ar_iv[8] = { 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01 };
+	byte ar_iv[8] = { 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00 };
 	memcpy(iv,ar_iv,8);
 	memcpy(&IVC,ar_iv,8);
  	arr_pad[0] = 0x01;
@@ -191,7 +191,8 @@ DES::DES(){
 
 void DES::init(const void* m_key,unsigned long long int IVCl){
 	sprintf((char *)key,"%s",m_key);
-	memcpy(iv,&IVCl,8);
+    //memcpy(key, m_key, 24);
+	memcpy( iv, &IVCl, 8);
 	IVC = IVCl;
 }
 
@@ -199,6 +200,7 @@ void DES::init(const void* m_key,unsigned long long int IVCl){
 
 void DES::init(const void* m_key){
 	sprintf((char *)key,"%s",m_key);
+    //memcpy(key, m_key, 24);
 }
 
 /*****************************************************************************/
@@ -206,6 +208,7 @@ void DES::init(const void* m_key){
 void DES::change_key(const void* m_key){
 	sprintf((char *)key,"000000000000000000000000\0");
 	sprintf((char *)key,"%s",m_key);
+    //memcpy(key, m_key, 24);
 }
 
 /*****************************************************************************/

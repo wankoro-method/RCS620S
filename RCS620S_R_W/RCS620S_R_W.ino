@@ -149,12 +149,11 @@ void GetMAC_A()
   //1st step authentication
   {
     //ランダムチャレンジ用乱数生成
-    randomSeed(analogRead(A1));
+    //randomSeed(analogRead(A1));
 
     Serial.print("RCData : ");
     for(int i = 0; i < 16; i++){
-      //RCValue[i] = random(0, 256);
-      RCValue[i] = 0x00;
+      RCValue[i] = random(0, 256);
       Serial.print(RCValue[i], HEX);
       Serial.print(":");
     }
@@ -227,22 +226,68 @@ void swapByteOrder(uint8_t data[])
 
 void MAC_AValueCalc()
 {
-  uint8_t RC1[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-  uint8_t RC2[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  uint8_t RC1[8], RC2[8];
+  for(int i = 0; i < 8; i++){
+    RC1[i] = RCValue[i];
+    RC2[i] = RCValue[i + 8];
+  }
 
-  uint8_t CK1[] = { 1, 1, 1, 1, 1, 1, 1, 1 };
-  uint8_t CK2[] = { 1, 1, 1, 1, 1, 1, 1, 1 };
+  for(int i = 0; i < 8; i++){
+    Serial.print(RC1[i], HEX);
+    Serial.print(":");
+  }
+  for(int i = 0; i < 8; i++){
+    Serial.print(RC2[i], HEX);
+    Serial.print(":");
+  }
+  Serial.println("");
 
-  uint8_t SK1[8], SK2[8];
+  uint8_t CK[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
+  ///////////SK1///////////
   //CK(key)とIVの初期化
-  des.init(CK1, (unsigned long long int)0);
+  des.init(CK, (unsigned long long int)0);
 
   //暗号化
+  des.calc_size_n_pad(sizeof(RC1));
+  uint8_t SK1[des.get_size()];
   des.tdesCbcEncipher(RC1,SK1);
 
   Serial.print("Arduino SK1 = ");
-  for(int i = 0; i < sizeof(SK1); i++){
+  for(int i = 7; i >= 0; i--){
     Serial.print(SK1[i], HEX);
+    Serial.print(":");
   }
+  Serial.println("");
+
+  ///////////SK2///////////
+  //CK(key)とIVの初期化
+  //des.init(CK, (unsigned long long int)0);
+
+  //暗号化
+  uint8_t cRC2[8];
+  for(int i = 0; i < 8; i++){
+    cRC2[i] = RC2[i] ^ SK1[i];
+  }
+
+  des.calc_size_n_pad(sizeof(RC2));
+  uint8_t SK2[des.get_size()];
+  des.tdesCbcEncipher(cRC2,SK1);
+
+  Serial.print("Arduino SK2 = ");
+  for(int i = 7; i >= 0; i--){
+    Serial.print(SK2[i], HEX);
+    Serial.print(":");
+  }
+  Serial.println("");
+  
+/*
+  //MAC_A
+  {
+    uint8_t D0[] = { 0x82, 0x00, 0x86, 0x00, 0x41, 0x00, 0xFF, 0xFF };
+    swapByteOrder(D0);
+
+    des.init(CK, (unsigned long long int)0);
+
+  }*/
 }
