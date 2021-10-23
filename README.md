@@ -8,6 +8,8 @@
 
 **※現在開発中でコマンドリスト等が不完全です**  
 
+[サンプルコード](https://github.com/wankoro-method/RCS620S/blob/main/Sample.md)
+
 # 通信仕様  
 ※Type-A及びType-BはISO/IEC 14443 通信です。  
 ※Type-FはFelica通信です。  
